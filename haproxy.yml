@@ -1,0 +1,39 @@
+---
+- hosts: measurinator-lb
+  become: true
+
+  tasks:
+    - name: create haproxy dir structure
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: 0755
+      with_items:
+        - /opt/haproxy/conf
+    
+    - name: copy haproxy config
+      template:
+        dest: /opt/haproxy/conf/haproxy.cfg
+        src: files/haproxy.cfg
+        mode: 0644
+      notify:
+        - restart haproxy container
+    
+    - name: Start haproxy
+      docker_container:
+        name: measurinator_haproxy_1
+        image: haproxy
+        state: started
+        volumes:
+          - /opt/haproxy/conf:/usr/local/etc/haproxy:ro
+        ports:
+          - 80:80
+          - 443:443
+        restart_policy: unless-stopped
+    
+  handlers:
+    - name: restart haproxy container
+      docker_container:
+        name: measurinator_haproxy_1
+        state: started
+        restart: yes
